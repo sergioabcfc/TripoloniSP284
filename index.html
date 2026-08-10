@@ -39,6 +39,9 @@ body{ background: var(--bg-page); color: var(--grafite); font-family: var(--sans
 .brand-divider{ width:1px; height:38px; background:#d8d6d3; }
 .project-name .project-label{ font-family:var(--sans); font-weight:700; font-size:9.5px; text-transform:uppercase; color:var(--cinza); letter-spacing:.6px; }
 .project-name .project-title{ font-family:var(--sans); font-weight:700; font-size:15px; color:var(--azul); margin-top:1px; }
+.semana-atual-badge{ display:inline-block; margin-top:6px; font-family:var(--sans); font-size:10.5px; font-weight:700; color:var(--azul); background:#e7e8f0; padding:3px 10px; border-radius:2px; letter-spacing:.2px; }
+.week-chip.is-atual{ position:relative; box-shadow:0 0 0 2px var(--azul) inset; }
+.week-chip.is-atual::after{ content:'HOJE'; position:absolute; top:-8px; right:-4px; background:var(--azul); color:#fff; font-size:8px; font-weight:800; padding:1.5px 5px; border-radius:2px; letter-spacing:.3px; }
 .head .meta{ text-align:right; font-size:11.5px; color:var(--cinza); line-height:1.7;}
 .head .meta b{ color:var(--azul); }
 .btn-update{
@@ -91,9 +94,36 @@ body{ background: var(--bg-page); color: var(--grafite); font-family: var(--sans
 .kpis-2col{ grid-template-columns:repeat(2,1fr); }
 .kpi .sub{ font-size:11.5px; color:var(--cinza); margin-top:8px; line-height:1.6; }
 .kpi .status{ display:inline-block; margin-top:7px; padding:3px 9px; border-radius:2px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.2px; }
-.kpi .status.acima{ background:#e2f3ea; color:#0ca30c; }
-.kpi .status.entre{ background:#fdf2df; color:#b9790a; }
+.kpi .status.acima{ background:#e7f0e9; color:var(--verde); }
+.kpi .status.entre{ background:#fbf1de; color:#a3791e; }
 .kpi .status.abaixo{ background:#f7e8e5; color:var(--vermelho); }
+
+/* ---- KPI com ícone e cor de destaque (tom quente/variado, não só azul) ---- */
+.kpi{ display:flex; flex-direction:column; transition:transform .12s, box-shadow .12s; }
+.kpi:hover{ transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.07); }
+.kpi-icon{ width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.kpi-icon svg{ width:17px; height:17px; stroke-width:1.8; }
+.kpi-icon.azul{ background:#e7e8f0; color:var(--azul); }
+.kpi-icon.verde{ background:#e7f0e9; color:var(--verde); }
+.kpi-icon.amber{ background:#fbf1de; color:#a3791e; }
+.kpi-icon.grafite{ background:#ece9e6; color:var(--grafite); }
+.kpi-icon.vermelho{ background:#f7e8e5; color:var(--vermelho); }
+.kpi.bd-azul{ border-left-color:var(--azul); }
+.kpi.bd-verde{ border-left-color:var(--verde); }
+.kpi.bd-amber{ border-left-color:#a3791e; }
+.kpi.bd-grafite{ border-left-color:var(--grafite); }
+.kpi.bd-vermelho{ border-left-color:var(--vermelho); }
+
+/* ---- Gauge de meta (indicador visual, não só texto) ---- */
+.kpi .gauge{ margin-top:13px; }
+.kpi .gauge-track{ position:relative; height:9px; border-radius:5px; background:#eeece9; }
+.kpi .gauge-fill{ position:absolute; left:0; top:0; height:100%; border-radius:5px; transition:width .35s ease; }
+.kpi .gauge-fill.acima{ background:var(--verde); }
+.kpi .gauge-fill.entre{ background:#c99a2e; }
+.kpi .gauge-fill.abaixo{ background:var(--vermelho); }
+.kpi .gauge-tick{ position:absolute; top:-3px; width:2px; height:15px; background:var(--grafite); opacity:.3; }
+.kpi .gauge-tick.meta{ opacity:.55; transform:translateX(-2px); }
+.kpi .gauge-labels{ display:flex; justify-content:space-between; font-size:10px; color:var(--cinza); margin-top:6px; font-weight:600; }
 
 /* CONTROLS */
 .controls{ display:flex; gap:18px; flex-wrap:wrap; align-items:flex-end; background:#fff; padding:15px 18px; margin-bottom:16px; border:1px solid #d8d6d3; border-radius:2px;}
@@ -198,6 +228,39 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
 .badge-alert{ display:inline-block; min-width:20px; text-align:center; padding:2px 7px; border-radius:2px; font-weight:700; font-size:11px; }
 .badge-alert.on{ background:#f7e8e5; color:var(--vermelho); }
 .badge-alert.off{ background:#f3f2f1; color:#b7b5b2; }
+
+/* ---- Resumo executivo (diretoria) + exportação PDF ---- */
+.resumo-diretoria{ background:linear-gradient(180deg,#fbfaf8,#fff); border-top:3px solid var(--azul); }
+.btn-pdf{
+  background:var(--grafite); color:#fff; border:none; font-family:var(--sans); font-weight:700;
+  font-size:11.5px; padding:9px 15px; cursor:pointer; border-radius:2px; letter-spacing:.2px;
+  display:inline-flex; align-items:center; gap:7px; transition: all .15s;
+}
+.btn-pdf svg{ width:14px; height:14px; }
+.btn-pdf:hover{ background:#1c1b1a; }
+.btn-pdf.outline{ background:#fff; color:var(--azul); border:1px solid var(--azul); }
+.btn-pdf.outline:hover{ background:#eef1f8; }
+.resumo-grid{ display:grid; grid-template-columns:1.1fr 1fr; gap:18px; margin-top:16px; }
+@media (max-width:980px){ .resumo-grid{ grid-template-columns:1fr; } }
+.resumo-subtitle{ font-family:var(--sans); font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.3px; color:var(--cinza); margin:0 0 10px; }
+.resumo-grid .compare-grid{ grid-template-columns:1fr; gap:10px; }
+.resumo-grid .compare-box{ padding:12px 14px; }
+.resumo-grid .compare-box .big{ font-size:22px; margin-bottom:6px; }
+.resumo-grid .compare-box ul{ line-height:1.6; }
+
+@media print{
+  .tabs, .btn-update, .update-status, #fileInput, #fileInputTel, .controls, .week-bar, .btn-pdf, .no-print{ display:none !important; }
+  body{ background:#fff; }
+  .wrap{ max-width:100%; padding:6px; }
+  .panel{ display:none !important; }
+  .panel.active{ display:block !important; }
+  /* Cards podem quebrar entre páginas (alguns são mais altos que uma folha);
+     só os componentes atômicos abaixo evitam ser cortados ao meio. */
+  .card{ box-shadow:none; border:1px solid #ccc; }
+  .kpi, .compare-box, .insight, .resumo-subtitle{ break-inside:avoid; page-break-inside:avoid; }
+  tr{ break-inside:avoid; }
+  .resumo-subtitle{ break-after:avoid; }
+}
 </style>
 </head>
 <body>
@@ -210,6 +273,7 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
       <div class="project-name">
         <div class="project-label">Projeto</div>
         <div class="project-title">Duplicação SP 284 | Lotes 1 e 2</div>
+        <div class="semana-atual-badge" id="semanaAtualBadge"></div>
       </div>
     </div>
     <div>
@@ -222,10 +286,24 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
     </div>
   </div>
 
+  <script>
+  (function(){
+    var CALENDAR_START = new Date(2025,1,17); // 17/02/2025, segunda-feira = semana 1
+    var hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    var diffDias = Math.floor((hoje - CALENDAR_START) / 86400000);
+    var semana = Math.floor(diffDias/7) + 1;
+    window.SEMANA_ATUAL_PROJETO = semana;
+    var el = document.getElementById('semanaAtualBadge');
+    if(el) el.textContent = (semana>=1 ? 'Semana '+semana+' do projeto' : 'Projeto ainda não iniciado');
+  })();
+  </script>
+
   <div class="tabs">
     <div class="tab active" data-tab="escavadeiras">Escavadeiras</div>
     <div class="tab" data-tab="cacambas">Caçambas</div>
     <div class="tab" data-tab="telemetria">Telemetria (piloto)</div>
+    <div class="tab" data-tab="resumo">Resumo Diretoria</div>
   </div>
 
   <!-- =================== ESCAVADEIRAS =================== -->
@@ -439,7 +517,7 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
   <!-- =================== TELEMETRIA (PILOTO) =================== -->
   <div class="panel" id="panel-telemetria">
 
-    <div class="card" style="display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap;">
+    <div class="card no-print" style="display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap;">
       <div style="flex:1 1 320px;">
         <h2 style="margin-bottom:6px;">Atualizar dados da telemetria</h2>
         <div class="note" style="margin-bottom:0;">Envie o relatório bruto exportado direto do site da MOVIAS (aba "Relatório de Eventos", sem nenhum tratamento manual) para recalcular esta aba com uma amostragem maior. Não mexe nas abas Escavadeiras/Caçambas.</div>
@@ -506,7 +584,28 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
           <div class="unit-btn" data-metric="momento">Momento (ton·km)</div>
         </div>
       </div>
+      <div class="ctl">
+        <label>Lote</label>
+        <div class="unit-toggle" id="loteToggle-tel">
+          <div class="unit-btn active" data-lote="__all__">Todos</div>
+          <div class="unit-btn" data-lote="1">Lote 1</div>
+          <div class="unit-btn" data-lote="2">Lote 2</div>
+        </div>
+      </div>
+      <div class="ctl">
+        <label>Tronco</label>
+        <div class="unit-toggle" id="troncoToggle-tel"></div>
+      </div>
+      <div class="ctl">
+        <label>Turno</label>
+        <div class="unit-toggle" id="turnoToggle-tel">
+          <div class="unit-btn active" data-turno="__all__">Todos</div>
+          <div class="unit-btn" data-turno="diurno">Diurno (6h–18h)</div>
+          <div class="unit-btn" data-turno="noturno">Noturno (18h–6h)</div>
+        </div>
+      </div>
     </div>
+    <div class="note" style="margin-top:-6px;">Lote/Tronco são calculados a partir da posição GPS e da estaca de destino de cada viagem; o Tronco só fica disponível quando o destino tem estaca no formato "E&lt;num&gt;+&lt;num&gt;,&lt;num&gt;" identificável.</div>
 
     <div class="card">
       <h2>Mapa de calor — concentração de viagens</h2>
@@ -614,6 +713,39 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
 
   </div>
 
+  <!-- =================== RESUMO DIRETORIA =================== -->
+  <div class="panel" id="panel-resumo">
+    <div class="card resumo-diretoria" id="cardResumo-tel">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:4px;">
+        <h2 style="margin-bottom:0;">Resumo executivo — piloto de telemetria</h2>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-pdf" id="btnPdfResumo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            Exportar PDF · Resumo
+          </button>
+          <button class="btn-pdf outline" id="btnPdfCompleto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            Exportar PDF · Painel completo
+          </button>
+        </div>
+      </div>
+      <div class="note" id="resumoFiltroDesc-tel" style="margin-bottom:6px;"></div>
+      <div class="note no-print" style="margin-bottom:14px;">Os filtros (período, tipo, equipamento, Lote/Tronco/Turno) são ajustados na aba <a href="#" id="linkAjustarFiltros" style="color:var(--azul); font-weight:700;">Telemetria (piloto)</a> — este resumo acompanha automaticamente o filtro ativo por lá.</div>
+      <div class="kpis" id="resumoKpi-tel"></div>
+      <div class="resumo-grid">
+        <div>
+          <h3 class="resumo-subtitle">Principais achados no filtro ativo</h3>
+          <div class="insights-body" id="resumoInsights-tel"></div>
+        </div>
+        <div>
+          <h3 class="resumo-subtitle">Telemetria × apontamento manual</h3>
+          <div class="note" style="margin:-4px 0 10px;">Comparação consolidada de todo o piloto — não varia com os filtros acima.</div>
+          <div class="compare-grid" id="resumoViabilidade-tel"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="footnote">
     <b>Atualização de dados:</b> use o botão "Atualizar dados" para importar a planilha semanal (.xlsx) com a mesma estrutura da aba "Dados" do arquivo de origem. O painel recalcula todos os indicadores no navegador, sem enviar dados a servidores externos.<br>
     <b>Sobre a distância de transporte:</b> calculada como a diferença entre a estaca de destino e a estaca de origem, multiplicada por 20 m (padrão de estaqueamento). Lançamentos com destino especial (bota-fora, lixão, reciclagem sem estaca) ficam fora deste indicador, mas continuam no volume total.<br>
@@ -643,13 +775,19 @@ document.getElementById('pctCacEmpty').textContent = DATA.meta.pct_cacamba_ident
 // =====================================================================
 // TABS
 // =====================================================================
+function activateTab(name){
+  const tab = document.querySelector('.tab[data-tab="'+name+'"]');
+  const panel = document.getElementById('panel-'+name);
+  if(!tab || !panel) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  tab.classList.add('active');
+  panel.classList.add('active');
+  tab.dispatchEvent(new Event('tabactivated'));
+}
+window.activateTab = activateTab;
 document.querySelectorAll('.tab').forEach(tab=>{
-  tab.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
-  });
+  tab.addEventListener('click', ()=>activateTab(tab.dataset.tab));
 });
 
 // =====================================================================
@@ -673,7 +811,8 @@ function buildModule(suffix, opts){
   const weekScroll = document.getElementById('weekScroll-'+suffix);
   weekScroll.innerHTML = DATA.meta.semanas.map(s=>{
     const info = DATA.meta.semana_info[s];
-    return `<div class="week-chip" data-week="${s}">S${s}<span class="d">${dateLabel(info.min)}–${dateLabel(info.max)}</span></div>`;
+    const atual = window.SEMANA_ATUAL_PROJETO===s ? ' is-atual' : '';
+    return `<div class="week-chip${atual}" data-week="${s}">S${s}<span class="d">${dateLabel(info.min)}–${dateLabel(info.max)}</span></div>`;
   }).join('');
 
   function refreshWeekUI(){
@@ -1465,6 +1604,36 @@ function rebuildDataset(parsed){
 
   function dLabel(iso){ const [y,m,d]=iso.split('-'); return d+'/'+m; }
 
+  // =====================================================================
+  // CADASTRO DE TRONCOS (Cadastro_Troncos_Calendário.xlsx) — Lote/Tronco por estaca + turno
+  // =====================================================================
+  // Lote 1 e Lote 2 ocupam trechos geográficos bem separados (~53km entre si), então a
+  // classificação de Lote usa o centróide mais próximo (calibrado com as ~740 estacas que já
+  // vêm com sufixo L1/L2 no rótulo bruto da MOVIAS — 100% de acerto nesse conjunto de validação).
+  const LOTE_CENTROIDES = { 1:[-22.48109904761905,-50.56763365079363], 2:[-22.231106532846674,-50.97122729927004] };
+  // Dentro de cada lote, os Troncos são faixas de estaca sequenciais e não sobrepostas
+  // (T1→T2→T3 no Lote 1; T4→T5→T6 no Lote 2) — uma vez definido o lote, a estaca resolve o tronco.
+  const TRONCO_FAIXAS = { 1:{T1:[0,504],T2:[504,1008],T3:[1008,1391]}, 2:{T4:[0,504],T5:[504,1008],T6:[1008,1517]} };
+  const ESTACA_RE = /^E\s*(\d+)\+(\d+),(\d+)/i;
+  function classificarLoteTronco(lat, lng, label){
+    if(lat===null || lat===undefined || lng===null || lng===undefined) return {lote:null, tronco:null};
+    const d1 = Math.hypot(lat-LOTE_CENTROIDES[1][0], lng-LOTE_CENTROIDES[1][1]);
+    const d2 = Math.hypot(lat-LOTE_CENTROIDES[2][0], lng-LOTE_CENTROIDES[2][1]);
+    const lote = d1<d2 ? 1 : 2;
+    let tronco = null;
+    const m = label ? ESTACA_RE.exec(label.trim()) : null;
+    if(m){
+      const estNum = parseInt(m[1],10);
+      const faixas = TRONCO_FAIXAS[lote];
+      for(const t in faixas){ if(estNum>=faixas[t][0] && estNum<=faixas[t][1]){ tronco=t; break; } }
+    }
+    return {lote, tronco};
+  }
+  function turnoDe(isoDateTime){
+    const h = new Date(isoDateTime).getHours();
+    return (h>=6 && h<18) ? 'diurno' : 'noturno';
+  }
+
   function groupLabel(lbl){
     if(!lbl) return 'Não identificado';
     const up = lbl.toUpperCase();
@@ -1489,6 +1658,13 @@ function rebuildDataset(parsed){
       t.OrigemGrupo = groupLabel(t.OrigemLabel);
       t.DestinoGrupo = groupLabel(t.DestinoLabel);
       t.Trajeto = t.OrigemLabel+' → '+t.DestinoLabel;
+      const destinoLT = classificarLoteTronco(t.DestinoLat, t.DestinoLng, t.DestinoLabel);
+      t.DestinoLote = destinoLT.lote;
+      t.DestinoTronco = destinoLT.tronco;
+      const origemLT = classificarLoteTronco(t.OrigemLat, t.OrigemLng, t.OrigemLabel);
+      t.OrigemLote = origemLT.lote;
+      t.OrigemTronco = origemLT.tronco;
+      t.Turno = turnoDe(t.DataDescarga);
     });
     diasDisponiveis = [...new Set(trips.map(t=>t.Data))].sort();
     computeMetas();
@@ -1548,17 +1724,34 @@ function rebuildDataset(parsed){
     const sv = statusVsMeta(atualViagensDia, mv.base, mv.meta);
     const sm = statusVsMeta(atualMomentoDia, mm.base, mm.meta);
 
+    const iconCls = {acima:'verde', entre:'amber', abaixo:'vermelho'};
+    const bdCls = {acima:'bd-verde', entre:'bd-amber', abaixo:'bd-vermelho'};
+    function gauge(atual, base, meta, s, decimais){
+      const pctFill = Math.max(0, Math.min(100, (atual/meta)*100));
+      const pctBase = Math.max(0, Math.min(100, (base/meta)*100));
+      return `
+        <div class="gauge">
+          <div class="gauge-track">
+            <div class="gauge-fill ${s.cls}" style="width:${pctFill.toFixed(1)}%"></div>
+            <div class="gauge-tick" style="left:${pctBase.toFixed(1)}%"></div>
+            <div class="gauge-tick meta" style="left:100%"></div>
+          </div>
+          <div class="gauge-labels"><span>Base ${fmt(base,decimais)}</span><span>Meta ${fmt(meta,decimais)}</span></div>
+        </div>`;
+    }
     el.innerHTML = `
-      <div class="kpi">
+      <div class="kpi ${bdCls[sv.cls]}">
+        <div class="kpi-icon ${iconCls[sv.cls]}">${ICONS.route}</div>
         <div class="label">Viagens / dia por caçamba</div>
         <div class="value">${fmt(atualViagensDia,1)} <small>atual no filtro</small></div>
-        <div class="sub">Base histórica: <b>${fmt(mv.base,1)}</b> · Meta (top 25% do piloto): <b>${fmt(mv.meta,1)}</b></div>
+        ${gauge(atualViagensDia, mv.base, mv.meta, sv, 1)}
         <span class="status ${sv.cls}">${sv.label}</span>
       </div>
-      <div class="kpi">
-        <div class="label">Momento de transporte / dia por caçamba</div>
-        <div class="value">${fmt(atualMomentoDia,1)} <small>ton·km, atual no filtro</small></div>
-        <div class="sub">Base histórica: <b>${fmt(mm.base,1)}</b> · Meta (top 25% do piloto): <b>${fmt(mm.meta,1)}</b></div>
+      <div class="kpi ${bdCls[sm.cls]}">
+        <div class="kpi-icon ${iconCls[sm.cls]}">${ICONS.target}</div>
+        <div class="label">Momento de transporte / dia por caçamba (ton·km)</div>
+        <div class="value">${fmt(atualMomentoDia,1)} <small>atual no filtro</small></div>
+        ${gauge(atualMomentoDia, mm.base, mm.meta, sm, 0)}
         <span class="status ${sm.cls}">${sm.label}</span>
       </div>
     `;
@@ -1568,11 +1761,14 @@ function rebuildDataset(parsed){
   // =====================================================================
   // STATE + FILTERS
   // =====================================================================
-  const state = { tipo:'__all__', frotas:new Set(), dataPontual:'', dataDe:'', dataAte:'', metric:'viagens', heatLayer:'rotas', showPontos:true, baseMap:'ruas', matrizOrigem:null, matrizDestino:null };
+  const state = { tipo:'__all__', frotas:new Set(), dataPontual:'', dataDe:'', dataAte:'', metric:'viagens', heatLayer:'rotas', showPontos:true, baseMap:'ruas', matrizOrigem:null, matrizDestino:null, lote:'__all__', tronco:'__all__', turno:'__all__' };
 
   const selTipo = document.getElementById('selTipo-tel');
   const chipsEquip = document.getElementById('chipsEquip-tel');
   const diaAll = document.getElementById('diaAll-tel');
+  const loteToggle = document.getElementById('loteToggle-tel');
+  const troncoToggle = document.getElementById('troncoToggle-tel');
+  const turnoToggle = document.getElementById('turnoToggle-tel');
 
   function populateTipo(){
     selTipo.innerHTML = '<option value="__all__">Todos</option>' + meta.tipos_equipamento.map(t=>`<option value="${t}">${t}</option>`).join('');
@@ -1613,6 +1809,7 @@ function rebuildDataset(parsed){
   function resetFiltersAndPopulate(){
     state.tipo='__all__'; state.frotas=new Set(); state.dataPontual=''; state.dataDe=''; state.dataAte='';
     state.matrizOrigem=null; state.matrizDestino=null;
+    state.lote='__all__'; state.tronco='__all__'; state.turno='__all__';
     selTipo.value='__all__';
     populateTipo(); populateEquip();
     [inpPontual, inpDe, inpAte].forEach(inp=>{
@@ -1623,6 +1820,9 @@ function rebuildDataset(parsed){
     document.querySelectorAll('#modoDataToggle-tel .unit-btn').forEach(b=>b.classList.toggle('active', b.dataset.modo==='pontual'));
     wrapPontual.style.display='flex'; wrapPeriodo.style.display='none';
     diaAll.classList.add('active');
+    if(loteToggle) loteToggle.querySelectorAll('.unit-btn').forEach(b=>b.classList.toggle('active', b.dataset.lote==='__all__'));
+    if(turnoToggle) turnoToggle.querySelectorAll('.unit-btn').forEach(b=>b.classList.toggle('active', b.dataset.turno==='__all__'));
+    populateTronco();
   }
 
   document.querySelectorAll('#modoDataToggle-tel .unit-btn').forEach(btn=>{
@@ -1654,6 +1854,40 @@ function rebuildDataset(parsed){
   }
 
   selTipo.addEventListener('change', ()=>{ state.tipo=selTipo.value; state.frotas=new Set(); populateEquip(); render(); });
+
+  // =====================================================================
+  // FILTROS DE LOTE / TRONCO / TURNO
+  // =====================================================================
+  function populateTronco(){
+    const opts = state.lote===1 ? ['T1','T2','T3'] : state.lote===2 ? ['T4','T5','T6'] : ['T1','T2','T3','T4','T5','T6'];
+    troncoToggle.innerHTML = `<div class="unit-btn${state.tronco==='__all__'?' active':''}" data-tronco="__all__">Todos</div>` +
+      opts.map(t=>`<div class="unit-btn${state.tronco===t?' active':''}" data-tronco="${t}">${t}</div>`).join('');
+    troncoToggle.querySelectorAll('.unit-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.tronco = btn.dataset.tronco;
+        populateTronco();
+        render();
+      });
+    });
+  }
+  loteToggle.querySelectorAll('.unit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.lote = btn.dataset.lote==='__all__' ? '__all__' : parseInt(btn.dataset.lote,10);
+      state.tronco = '__all__';
+      loteToggle.querySelectorAll('.unit-btn').forEach(b=>b.classList.toggle('active', b===btn));
+      populateTronco();
+      render();
+    });
+  });
+  turnoToggle.querySelectorAll('.unit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.turno = btn.dataset.turno;
+      turnoToggle.querySelectorAll('.unit-btn').forEach(b=>b.classList.toggle('active', b===btn));
+      render();
+    });
+  });
+  populateTronco();
+
   document.querySelectorAll('#metricToggle-tel .unit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       state.metric = btn.dataset.metric;
@@ -1690,6 +1924,9 @@ function rebuildDataset(parsed){
     return trips.filter(t =>
       (state.tipo==='__all__' || t.TipoVeiculo===state.tipo) &&
       (state.frotas.size===0 || state.frotas.has(t.Frota)) &&
+      (state.lote==='__all__' || t.DestinoLote===state.lote) &&
+      (state.tronco==='__all__' || t.DestinoTronco===state.tronco) &&
+      (state.turno==='__all__' || t.Turno===state.turno) &&
       matchesData(t)
     );
   }
@@ -1739,6 +1976,13 @@ function rebuildDataset(parsed){
   // =====================================================================
   // KPIs
   // =====================================================================
+  const ICONS = {
+    route: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="2.4"/><circle cx="18" cy="7" r="2.4"/><path d="M8.1 15.6C11 10.3 13 9 15.9 8.4" stroke-dasharray="2.6 2.6"/></svg>',
+    weight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M6 7h12"/><path d="M6 7l-3 6a3 3 0 0 0 6 0L6 7Z"/><path d="M18 7l-3 6a3 3 0 0 0 6 0l-3-6Z"/></svg>',
+    trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>',
+    truck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.3"/><circle cx="18.5" cy="18.5" r="2.3"/></svg>',
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>',
+  };
   function renderKPI(){
     const rows = fTrips();
     const totalViagens = rows.length;
@@ -1748,10 +1992,10 @@ function rebuildDataset(parsed){
     const comDist = rows.filter(r=>r.DistanciaKm!==null).length;
     const pctDist = totalViagens ? Math.round(1000*comDist/totalViagens)/10 : 0;
     document.getElementById('kpi-tel').innerHTML = `
-      <div class="kpi"><div class="label">Viagens identificadas</div><div class="value">${fmt(totalViagens)}</div></div>
-      <div class="kpi"><div class="label">Peso total transportado</div><div class="value">${fmt(totalPeso)} <small>ton</small></div></div>
-      <div class="kpi"><div class="label">Momento de transporte</div><div class="value">${fmt(totalMomento)} <small>ton·km</small></div></div>
-      <div class="kpi"><div class="label">Caçambas com viagem no filtro</div><div class="value">${fmt(cacambas.size)} <small>/ ${meta.frota_total_cacambas} da frota</small></div></div>
+      <div class="kpi bd-azul"><div class="kpi-icon azul">${ICONS.route}</div><div class="label">Viagens identificadas</div><div class="value">${fmt(totalViagens)}</div></div>
+      <div class="kpi bd-verde"><div class="kpi-icon verde">${ICONS.weight}</div><div class="label">Peso total transportado</div><div class="value">${fmt(totalPeso)} <small>ton</small></div></div>
+      <div class="kpi bd-amber"><div class="kpi-icon amber">${ICONS.trending}</div><div class="label">Momento de transporte</div><div class="value">${fmt(totalMomento)} <small>ton·km</small></div></div>
+      <div class="kpi bd-grafite"><div class="kpi-icon grafite">${ICONS.truck}</div><div class="label">Caçambas com viagem no filtro</div><div class="value">${fmt(cacambas.size)} <small>/ ${meta.frota_total_cacambas} da frota</small></div></div>
     `;
   }
 
@@ -2116,6 +2360,80 @@ function rebuildDataset(parsed){
   }
 
   // =====================================================================
+  // RESUMO EXECUTIVO PARA DIRETORIA (reflete o filtro ativo)
+  // =====================================================================
+  function descricaoFiltroAtivo(){
+    const partes = [];
+    if(window.SEMANA_ATUAL_PROJETO>=1) partes.push(`Semana ${window.SEMANA_ATUAL_PROJETO} do projeto`);
+    if(modoDataAtivo()==='pontual' && state.dataPontual) partes.push(`Data: ${dLabel(state.dataPontual)}`);
+    else if(modoDataAtivo()==='periodo' && (state.dataDe || state.dataAte)) partes.push(`Período: ${state.dataDe?dLabel(state.dataDe):'início'} a ${state.dataAte?dLabel(state.dataAte):'fim'}`);
+    else partes.push('Todos os dias do piloto');
+    if(state.tipo!=='__all__') partes.push(`Tipo: ${state.tipo}`);
+    if(state.frotas.size>0) partes.push(`Caçambas: ${[...state.frotas].join(', ')}`);
+    if(state.lote!=='__all__') partes.push(`Lote ${state.lote}`);
+    if(state.tronco!=='__all__') partes.push(`Tronco ${state.tronco}`);
+    if(state.turno!=='__all__') partes.push(`Turno ${state.turno==='diurno'?'diurno (6h–18h)':'noturno (18h–6h)'}`);
+    if(state.matrizOrigem || state.matrizDestino) partes.push(`Trecho: ${state.matrizOrigem||'—'} → ${state.matrizDestino||'—'}`);
+    return partes;
+  }
+  function renderResumoDiretoria(){
+    const rows = fTrips();
+    const totalViagens = rows.length;
+    const totalPeso = rows.reduce((s,r)=>s+(r.PesoTon||0),0);
+    const totalMomento = rows.reduce((s,r)=>s+(r.MomentoTonKm||0),0);
+    const cacambas = new Set(rows.map(r=>r.Frota));
+    const dias = new Set(rows.map(r=>r.Data));
+
+    const descEl = document.getElementById('resumoFiltroDesc-tel');
+    if(descEl){
+      descEl.innerHTML = `<b>Filtro ativo:</b> ${descricaoFiltroAtivo().join(' · ')} — resumo gerado em ${new Date().toLocaleDateString('pt-BR')}.`;
+    }
+    const kpiEl = document.getElementById('resumoKpi-tel');
+    if(kpiEl){
+      kpiEl.innerHTML = `
+        <div class="kpi bd-azul"><div class="kpi-icon azul">${ICONS.route}</div><div class="label">Viagens identificadas</div><div class="value">${fmt(totalViagens)}</div></div>
+        <div class="kpi bd-verde"><div class="kpi-icon verde">${ICONS.weight}</div><div class="label">Peso total transportado</div><div class="value">${fmt(totalPeso)} <small>ton</small></div></div>
+        <div class="kpi bd-amber"><div class="kpi-icon amber">${ICONS.trending}</div><div class="label">Momento de transporte</div><div class="value">${fmt(totalMomento)} <small>ton·km</small></div></div>
+        <div class="kpi bd-grafite"><div class="kpi-icon grafite">${ICONS.truck}</div><div class="label">Caçambas ativas no filtro</div><div class="value">${fmt(cacambas.size)} <small>em ${fmt(dias.size)} dia${dias.size===1?'':'s'}</small></div></div>
+      `;
+    }
+    const insightsEl = document.getElementById('insightsTel');
+    const resumoInsightsEl = document.getElementById('resumoInsights-tel');
+    if(resumoInsightsEl) resumoInsightsEl.innerHTML = insightsEl ? insightsEl.innerHTML : '';
+    const viabEl = document.getElementById('viabilidade-tel');
+    const resumoViabEl = document.getElementById('resumoViabilidade-tel');
+    if(resumoViabEl) resumoViabEl.innerHTML = viabEl ? viabEl.innerHTML : '';
+  }
+  // Cada aba imprime a si mesma — "Resumo" imprime a aba Resumo Diretoria,
+  // "Painel completo" troca para a aba Telemetria (garantindo o mapa carregado) e imprime.
+  function exportarPDF(modo){
+    renderResumoDiretoria();
+    const tabAtiva = document.querySelector('.tab.active');
+    const tabAnterior = tabAtiva ? tabAtiva.dataset.tab : null;
+    const alvo = modo==='resumo' ? 'resumo' : 'telemetria';
+    window.activateTab(alvo);
+    if(alvo==='telemetria'){ if(!map) initMap(); else map.invalidateSize(); }
+    window.__pdfTabAnterior = tabAnterior;
+    setTimeout(()=>window.print(), 120);
+  }
+  window.addEventListener('afterprint', ()=>{
+    if(window.__pdfTabAnterior){ window.activateTab(window.__pdfTabAnterior); window.__pdfTabAnterior = null; }
+  });
+  const btnPdfResumo = document.getElementById('btnPdfResumo');
+  const btnPdfCompleto = document.getElementById('btnPdfCompleto');
+  if(btnPdfResumo) btnPdfResumo.addEventListener('click', ()=>exportarPDF('resumo'));
+  if(btnPdfCompleto) btnPdfCompleto.addEventListener('click', ()=>exportarPDF('completo'));
+  const linkAjustarFiltros = document.getElementById('linkAjustarFiltros');
+  if(linkAjustarFiltros){
+    linkAjustarFiltros.addEventListener('click', (e)=>{
+      e.preventDefault();
+      window.activateTab('telemetria');
+      const controlsEl = document.querySelector('#panel-telemetria .controls');
+      if(controlsEl) controlsEl.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  }
+
+  // =====================================================================
   // MAPA DE CALOR
   // =====================================================================
   let map=null, heatLayers=[], pontosLayerGroup=null, tileRuas=null, tileSatelite=null;
@@ -2140,7 +2458,7 @@ function rebuildDataset(parsed){
 
   function initMap(){
     if(map || typeof L==='undefined') return;
-    map = L.map('mapTel', {scrollWheelZoom:true});
+    map = L.map('mapTel', {scrollWheelZoom:true, trackResize:false}); // resize é disparado manualmente ao ativar a aba (evita redraw com o mapa oculto em outras abas)
     tileRuas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
@@ -2235,7 +2553,9 @@ function rebuildDataset(parsed){
   // inicializa o mapa só quando a aba Telemetria é aberta pela 1ª vez (Leaflet precisa do container visível)
   const tabTel = document.querySelector('.tab[data-tab="telemetria"]');
   if(tabTel){
-    tabTel.addEventListener('click', ()=>{
+    // 'tabactivated' cobre tanto o clique real na aba quanto a ativação programática
+    // (ex.: link "Ajustar filtros" na aba Resumo, ou exportação de PDF do painel completo).
+    tabTel.addEventListener('tabactivated', ()=>{
       setTimeout(()=>{
         if(!map) initMap(); else map.invalidateSize();
       }, 60);
@@ -2246,6 +2566,7 @@ function rebuildDataset(parsed){
     renderKPI(); renderRanking(); renderDiario(); renderAlertas(); renderMatriz(); renderTrajetos();
     renderInsights(); renderPerformance(); renderMetas();
     if(map) renderMap();
+    renderResumoDiretoria();
   }
 
   function refreshAll(){
