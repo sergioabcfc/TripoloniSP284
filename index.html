@@ -176,6 +176,15 @@ table.heat-table th.rowhead{ text-align:left; white-space:nowrap; padding-right:
 table.heat-table td.cell{ text-align:center; font-weight:700; color:#fff; min-width:56px; }
 table.heat-table td.cell.zero{ color:var(--cinza); background:#f7f6f5 !important; font-weight:500; }
 table.heat-table th.colhead{ font-size:9.5px; text-align:center; max-width:90px; }
+table.heat-table th.rowhead, table.heat-table th.colhead{ cursor:pointer; }
+table.heat-table th.rowhead:hover, table.heat-table th.colhead:hover{ color:var(--azul); text-decoration:underline; }
+table.heat-table td.cell:not(.zero){ cursor:pointer; }
+table.heat-table td.cell:not(.zero):hover{ outline:2px solid var(--azul-light); outline-offset:-2px; }
+table.heat-table th.rowhead.active-filter, table.heat-table th.colhead.active-filter{ color:var(--azul); font-weight:800; text-decoration:underline; }
+table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline-offset:-2.5px; }
+.matriz-filter-badge{ display:inline-flex; align-items:center; gap:9px; background:#eef1f8; border:1px solid #c7cae6; color:var(--azul); font-size:12.5px; padding:8px 14px; border-radius:2px; font-weight:600; margin:-6px 0 16px; }
+.matriz-filter-badge button{ background:var(--azul); color:#fff; border:none; border-radius:2px; width:19px; height:19px; cursor:pointer; font-size:12px; line-height:1; }
+.matriz-filter-badge button:hover{ background:var(--azul-light); }
 .badge-alert{ display:inline-block; min-width:20px; text-align:center; padding:2px 7px; border-radius:2px; font-weight:700; font-size:11px; }
 .badge-alert.on{ background:#f7e8e5; color:var(--vermelho); }
 .badge-alert.off{ background:#f3f2f1; color:#b7b5b2; }
@@ -445,6 +454,8 @@ table.heat-table th.colhead{ font-size:9.5px; text-align:center; max-width:90px;
     </div>
 
     <div class="kpis" id="kpi-tel"></div>
+
+    <div id="matrizFiltroBadge-tel"></div>
 
     <div class="week-bar" style="flex-wrap:wrap;">
       <span class="lbl">Data</span>
@@ -1447,7 +1458,7 @@ function rebuildDataset(parsed){
   // =====================================================================
   // STATE + FILTERS
   // =====================================================================
-  const state = { tipo:'__all__', frotas:new Set(), dataPontual:'', dataDe:'', dataAte:'', metric:'viagens', heatLayer:'rotas', showPontos:true, baseMap:'ruas' };
+  const state = { tipo:'__all__', frotas:new Set(), dataPontual:'', dataDe:'', dataAte:'', metric:'viagens', heatLayer:'rotas', showPontos:true, baseMap:'ruas', matrizOrigem:null, matrizDestino:null };
 
   const selTipo = document.getElementById('selTipo-tel');
   const chipsEquip = document.getElementById('chipsEquip-tel');
@@ -1491,6 +1502,7 @@ function rebuildDataset(parsed){
 
   function resetFiltersAndPopulate(){
     state.tipo='__all__'; state.frotas=new Set(); state.dataPontual=''; state.dataDe=''; state.dataAte='';
+    state.matrizOrigem=null; state.matrizDestino=null;
     selTipo.value='__all__';
     populateTipo(); populateEquip();
     [inpPontual, inpDe, inpAte].forEach(inp=>{
@@ -1564,12 +1576,48 @@ function rebuildDataset(parsed){
   function metricKey(){ return {viagens:'__count__', peso:'PesoTon', momento:'MomentoTonKm'}[state.metric]; }
   function metricLabel(){ return {viagens:'viagens', peso:'ton', momento:'ton·km'}[state.metric]; }
 
-  function fTrips(){
+  function fTripsBase(){
     return trips.filter(t =>
       (state.tipo==='__all__' || t.TipoVeiculo===state.tipo) &&
       (state.frotas.size===0 || state.frotas.has(t.Frota)) &&
       matchesData(t)
     );
+  }
+  function fTrips(){
+    return fTripsBase().filter(t =>
+      (state.matrizOrigem===null || t.OrigemGrupo===state.matrizOrigem) &&
+      (state.matrizDestino===null || t.DestinoGrupo===state.matrizDestino)
+    );
+  }
+  // =====================================================================
+  // NAVEGAÇÃO REVERSA (clique na matriz origem×destino filtra o resto do painel)
+  // =====================================================================
+  function toggleMatrizOrigem(o){
+    if(state.matrizOrigem===o && state.matrizDestino===null){ state.matrizOrigem=null; }
+    else { state.matrizOrigem=o; state.matrizDestino=null; }
+    render();
+  }
+  function toggleMatrizDestino(d){
+    if(state.matrizDestino===d && state.matrizOrigem===null){ state.matrizDestino=null; }
+    else { state.matrizDestino=d; state.matrizOrigem=null; }
+    render();
+  }
+  function toggleMatrizCell(o,d){
+    if(state.matrizOrigem===o && state.matrizDestino===d){ state.matrizOrigem=null; state.matrizDestino=null; }
+    else { state.matrizOrigem=o; state.matrizDestino=d; }
+    render();
+  }
+  function clearMatrizFiltro(){ state.matrizOrigem=null; state.matrizDestino=null; render(); }
+  window.clearMatrizFiltro = clearMatrizFiltro;
+  function renderMatrizBadge(){
+    const el = document.getElementById('matrizFiltroBadge-tel');
+    if(!el) return;
+    if(state.matrizOrigem===null && state.matrizDestino===null){ el.innerHTML=''; return; }
+    let texto;
+    if(state.matrizOrigem!==null && state.matrizDestino!==null) texto = `${state.matrizOrigem} → ${state.matrizDestino}`;
+    else if(state.matrizOrigem!==null) texto = `Origem: ${state.matrizOrigem}`;
+    else texto = `Destino: ${state.matrizDestino}`;
+    el.innerHTML = `<div class="matriz-filter-badge">Filtrado pela matriz · <b>${texto}</b><button onclick="clearMatrizFiltro()" title="Limpar filtro">✕</button></div>`;
   }
   function fAlerts(){
     return alertEvents.filter(a =>
@@ -1730,7 +1778,8 @@ function rebuildDataset(parsed){
   // MATRIZ ORIGEM x DESTINO
   // =====================================================================
   function renderMatriz(){
-    const rows = fTrips();
+    renderMatrizBadge();
+    const rows = fTripsBase();
     const mat = {};
     const origens = new Set(), destinos = new Set();
     rows.forEach(r=>{
@@ -1744,21 +1793,27 @@ function rebuildDataset(parsed){
     if(oList.length===0){ wrap.innerHTML = `<div class="note">Sem viagens no filtro selecionado</div>`; return; }
     let maxV = 1;
     oList.forEach(o=>dList.forEach(d=>{ maxV = Math.max(maxV, mat[o+'|||'+d]||0); }));
-    let html = '<table class="heat-table"><thead><tr><th></th>'+dList.map(d=>`<th class="colhead">${d}</th>`).join('')+'</tr></thead><tbody>';
+    let html = '<table class="heat-table"><thead><tr><th></th>'+dList.map(d=>
+      `<th class="colhead${state.matrizDestino===d?' active-filter':''}" data-d="${d}" title="Clique para filtrar por este destino">${d}</th>`
+    ).join('')+'</tr></thead><tbody>';
     oList.forEach(o=>{
-      html += `<tr><th class="rowhead">${o}</th>`;
+      html += `<tr><th class="rowhead${state.matrizOrigem===o?' active-filter':''}" data-o="${o}" title="Clique para filtrar por esta origem">${o}</th>`;
       dList.forEach(d=>{
         const v = mat[o+'|||'+d]||0;
         if(v===0){ html += `<td class="cell zero">–</td>`; }
         else {
           const alpha = 0.25 + 0.75*(v/maxV);
-          html += `<td class="cell" style="background:rgba(44,51,112,${alpha.toFixed(2)})" title="${o} → ${d}: ${v} viagens">${v}</td>`;
+          const active = state.matrizOrigem===o && state.matrizDestino===d;
+          html += `<td class="cell${active?' active-filter':''}" data-o="${o}" data-d="${d}" style="background:rgba(44,51,112,${alpha.toFixed(2)})" title="${o} → ${d}: ${v} viagens — clique para filtrar o painel">${v}</td>`;
         }
       });
       html += '</tr>';
     });
     html += '</tbody></table>';
     wrap.innerHTML = html;
+    wrap.querySelectorAll('th.rowhead').forEach(th=>th.addEventListener('click', ()=>toggleMatrizOrigem(th.dataset.o)));
+    wrap.querySelectorAll('th.colhead').forEach(th=>th.addEventListener('click', ()=>toggleMatrizDestino(th.dataset.d)));
+    wrap.querySelectorAll('td.cell:not(.zero)').forEach(td=>td.addEventListener('click', ()=>toggleMatrizCell(td.dataset.o, td.dataset.d)));
   }
 
   // =====================================================================
