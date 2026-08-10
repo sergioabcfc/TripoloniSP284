@@ -185,6 +185,10 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
 .matriz-filter-badge{ display:inline-flex; align-items:center; gap:9px; background:#eef1f8; border:1px solid #c7cae6; color:var(--azul); font-size:12.5px; padding:8px 14px; border-radius:2px; font-weight:600; margin:-6px 0 16px; }
 .matriz-filter-badge button{ background:var(--azul); color:#fff; border:none; border-radius:2px; width:19px; height:19px; cursor:pointer; font-size:12px; line-height:1; }
 .matriz-filter-badge button:hover{ background:var(--azul-light); }
+#tblPerformance-tel thead th{ cursor:pointer; user-select:none; white-space:nowrap; }
+#tblPerformance-tel thead th:hover{ color:var(--azul); }
+#tblPerformance-tel thead th .sort-ico{ font-size:9px; opacity:.55; margin-left:3px; }
+#tblPerformance-tel tbody tr:hover{ background:#f5f6fa; }
 .badge-alert{ display:inline-block; min-width:20px; text-align:center; padding:2px 7px; border-radius:2px; font-weight:700; font-size:11px; }
 .badge-alert.on{ background:#f7e8e5; color:var(--vermelho); }
 .badge-alert.off{ background:#f3f2f1; color:#b7b5b2; }
@@ -446,6 +450,7 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
 
     <div class="card insights-card">
       <h2>Insights</h2>
+      <div class="note" style="margin-bottom:10px;">Reflete os filtros ativos acima (período, tipo, equipamento e seleção na matriz origem×destino).</div>
       <div class="insights-body" id="insightsTel"></div>
     </div>
 
@@ -527,6 +532,26 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
       <h2>Ranking de caçambas — viagens identificadas automaticamente</h2>
       <div class="note">Cada viagem = 1 evento de descarga (sensor de báscula) associado à carga mais recente da mesma caçamba. Contagem, peso e momento vêm 100% da telemetria, sem apontamento manual.</div>
       <svg class="chart" id="chartRanking-tel" viewBox="0 0 780 340"></svg>
+    </div>
+
+    <div class="card">
+      <h2>Performance por caçamba — o que explica mais ou menos viagens</h2>
+      <div class="note">Número de viagens isolado não diz muito: uma caçamba com trajetos curtos naturalmente roda mais vezes que uma em rota longa. Compare com distância e duração do ciclo para entender a causa. Clique no cabeçalho de uma coluna para ordenar.</div>
+      <div id="performanceInsight-tel"></div>
+      <div class="tbl-wrap">
+        <table id="tblPerformance-tel">
+          <thead><tr>
+            <th data-col="frota">Caçamba</th>
+            <th data-col="viagens">Viagens</th>
+            <th data-col="dias">Dias ativos</th>
+            <th data-col="viagensDia">Viagens / dia ativo</th>
+            <th data-col="distMedia">Dist. média (km)</th>
+            <th data-col="duracaoMedia">Ciclo médio (min)</th>
+            <th data-col="pesoMedio">Peso médio (ton)</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="row2">
@@ -1649,7 +1674,16 @@ function rebuildDataset(parsed){
   // INSIGHTS
   // =====================================================================
   function renderInsights(){
-    const rows = trips;
+    const rows = fTrips();
+    if(rows.length===0){
+      document.getElementById('insightsTel').innerHTML = `
+        <div class="insight"><div class="ico warn">!</div><div class="txt">Sem viagens no filtro selecionado — ajuste o período, tipo ou equipamento acima para ver os insights.</div></div>
+      `;
+      return;
+    }
+    const datasFiltradas = [...new Set(rows.map(r=>r.Data))].sort();
+    const periodoTxt = datasFiltradas.length<=1 ? dLabel(datasFiltradas[0]) : `${dLabel(datasFiltradas[0])} a ${dLabel(datasFiltradas[datasFiltradas.length-1])}`;
+    const cacambasAtivas = new Set(rows.map(r=>r.Frota)).size;
     const byFrota = {};
     rows.forEach(r=>{ byFrota[r.Frota]=(byFrota[r.Frota]||0)+1; });
     const topFrota = Object.entries(byFrota).sort((a,b)=>b[1]-a[1])[0];
@@ -1658,19 +1692,111 @@ function rebuildDataset(parsed){
     const topTrajeto = Object.entries(byTrajeto).sort((a,b)=>b[1]-a[1])[0];
     const comOrigem = rows.filter(r=>r.OrigemIdentificada).length;
     const pctOrigem = Math.round(1000*comOrigem/rows.length)/10;
-    const totalAlertas = alertEvents.length;
+    const alertasFiltrados = fAlerts().length;
 
     const items = [
-      {ico:'info', txt:`No piloto de <b>${meta.dias_periodo} dias</b>, <b>${meta.cacambas_monitoradas_piloto} caçambas</b> equipadas geraram <b>${fmt(rows.length)} viagens</b> identificadas 100% automaticamente — contra apenas <b>${meta.pct_manual_identificado}%</b> de identificação no apontamento manual atual.`},
-      {ico:'up', txt:`<b>${topFrota[0]}</b> foi a caçamba mais produtiva do piloto, com <b>${topFrota[1]} viagens</b> registradas pela telemetria sem qualquer digitação manual.`},
-      {ico:'info', txt:`O trajeto <b>${topTrajeto[0]}</b> concentrou o maior momento de transporte do período (<b>${fmt(topTrajeto[1])} ton·km</b>), calculado com coordenadas reais de GPS — não estimativa por estaca.`},
-      {ico:(pctOrigem>=85?'up':'warn'), txt:`<b>${pctOrigem.toString().replace('.',',')}%</b> das viagens tiveram origem e destino totalmente identificados pela telemetria; o restante corresponde a viagens iniciadas fora da janela de coleta do período.`},
-      {ico:'warn', txt:`A telemetria também capturou <b>${totalAlertas} alertas operacionais</b> (bateria desconectada / desabastecimento fora do padrão) que hoje não existem em nenhum controle manual da frota.`},
+      {ico:'info', txt:`No período <b>${periodoTxt}</b>, <b>${cacambasAtivas} caçamba${cacambasAtivas===1?'':'s'}</b> geraram <b>${fmt(rows.length)} viagens</b> identificadas 100% automaticamente — contra apenas <b>${meta.pct_manual_identificado}%</b> de identificação no apontamento manual atual.`},
+      {ico:'up', txt:`<b>${topFrota[0]}</b> foi a caçamba mais produtiva do filtro atual, com <b>${topFrota[1]} viagens</b> registradas pela telemetria sem qualquer digitação manual.`},
+      {ico:'info', txt:`O trajeto <b>${topTrajeto[0]}</b> concentrou o maior momento de transporte no período selecionado (<b>${fmt(topTrajeto[1])} ton·km</b>), calculado com coordenadas reais de GPS — não estimativa por estaca.`},
+      {ico:(pctOrigem>=85?'up':'warn'), txt:`<b>${pctOrigem.toString().replace('.',',')}%</b> das viagens neste filtro tiveram origem e destino totalmente identificados pela telemetria; o restante corresponde a viagens iniciadas fora da janela de coleta.`},
+      {ico:'warn', txt:`A telemetria também capturou <b>${alertasFiltrados} alerta${alertasFiltrados===1?'':'s'} operacional${alertasFiltrados===1?'':'is'}</b> (bateria desconectada / desabastecimento fora do padrão) neste filtro — hoje inexistentes em qualquer controle manual da frota.`},
     ];
     document.getElementById('insightsTel').innerHTML = items.map(i=>`
       <div class="insight"><div class="ico ${i.ico}">${i.ico==='up'?'▲':i.ico==='down'?'▼':i.ico==='warn'?'!':'i'}</div><div class="txt">${i.txt}</div></div>
     `).join('');
   }
+
+  // =====================================================================
+  // PERFORMANCE POR CAÇAMBA (o que explica mais/menos viagens)
+  // =====================================================================
+  const perfSort = { col:'viagens', dir:-1 };
+  function renderPerformance(){
+    const rows = fTrips();
+    const byFrota = {};
+    rows.forEach(r=>{
+      const k = r.Frota;
+      if(!byFrota[k]) byFrota[k] = {viagens:0, dias:new Set(), distSum:0, distN:0, durSum:0, durN:0, pesoSum:0, pesoN:0};
+      const d = byFrota[k];
+      d.viagens += 1;
+      d.dias.add(r.Data);
+      if(r.DistanciaKm!==null && r.DistanciaKm!==undefined){ d.distSum += r.DistanciaKm; d.distN += 1; }
+      if(r.DuracaoMin!==null && r.DuracaoMin!==undefined && r.OrigemIdentificada){ d.durSum += r.DuracaoMin; d.durN += 1; }
+      if(r.PesoTon!==null && r.PesoTon!==undefined){ d.pesoSum += r.PesoTon; d.pesoN += 1; }
+    });
+    let list = Object.entries(byFrota).map(([f,d])=>({
+      frota: f,
+      viagens: d.viagens,
+      dias: d.dias.size,
+      viagensDia: d.dias.size ? d.viagens/d.dias.size : 0,
+      distMedia: d.distN ? d.distSum/d.distN : null,
+      duracaoMedia: d.durN ? d.durSum/d.durN : null,
+      pesoMedio: d.pesoN ? d.pesoSum/d.pesoN : null
+    }));
+    const tbody = document.querySelector('#tblPerformance-tel tbody');
+    document.querySelectorAll('#tblPerformance-tel thead th').forEach(th=>{
+      const base = th.textContent.replace(/\s*[▲▼]\s*$/,'');
+      th.innerHTML = base + (th.dataset.col===perfSort.col ? `<span class="sort-ico">${perfSort.dir===1?'▲':'▼'}</span>` : '');
+    });
+    if(list.length===0){
+      tbody.innerHTML = `<tr><td colspan="7" style="color:#999;font-style:italic;">Sem viagens no filtro selecionado</td></tr>`;
+      renderPerformanceInsight([]);
+      return;
+    }
+    list.sort((a,b)=>{
+      const va=a[perfSort.col], vb=b[perfSort.col];
+      const na = (va===null||va===undefined) ? -Infinity : va;
+      const nb = (vb===null||vb===undefined) ? -Infinity : vb;
+      if(typeof na==='string') return na.localeCompare(nb)*perfSort.dir;
+      return (na-nb)*perfSort.dir;
+    });
+    tbody.innerHTML = list.map(r=>`
+      <tr><td><b>${r.frota}</b></td><td>${fmt(r.viagens)}</td><td>${fmt(r.dias)}</td>
+      <td>${fmt(r.viagensDia,2)}</td>
+      <td>${r.distMedia!==null?fmt(r.distMedia,2):'—'}</td>
+      <td>${r.duracaoMedia!==null?fmt(r.duracaoMedia,0):'—'}</td>
+      <td>${r.pesoMedio!==null?fmt(r.pesoMedio,2):'—'}</td></tr>
+    `).join('');
+    renderPerformanceInsight(list);
+  }
+  function renderPerformanceInsight(list){
+    const el = document.getElementById('performanceInsight-tel');
+    if(!el) return;
+    if(!list || list.length < 4){
+      el.innerHTML = `<div class="note" style="margin:0 0 12px;">Amostra pequena demais no filtro atual para comparar o que diferencia as caçambas — amplie o período ou o conjunto de equipamentos.</div>`;
+      return;
+    }
+    const ordered = [...list].sort((a,b)=>b.viagens-a.viagens);
+    const n = Math.max(1, Math.min(3, Math.floor(ordered.length/2)));
+    const top = ordered.slice(0,n), bottom = ordered.slice(-n);
+    const avg = (arr,key) => { const vals = arr.map(r=>r[key]).filter(v=>v!==null && v!==undefined); return vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : null; };
+    const topDist=avg(top,'distMedia'), botDist=avg(bottom,'distMedia');
+    const topDur=avg(top,'duracaoMedia'), botDur=avg(bottom,'duracaoMedia');
+    const topDias=avg(top,'dias'), botDias=avg(bottom,'dias');
+    const pct = (a,b) => (a!==null && b!==null && b!==0) ? Math.round(100*(b-a)/b) : null;
+    const pctDist = pct(topDist, botDist);
+    const pctDur = pct(topDur, botDur);
+    const pctDiasInv = (topDias!==null && botDias!==null && topDias!==0) ? Math.round(100*(topDias-botDias)/topDias) : null;
+    const nomesTop = top.map(r=>r.frota).join(', ');
+    const nomesBottom = bottom.map(r=>r.frota).join(', ');
+    let texto;
+    if(pctDist!==null && pctDist>=15){
+      texto = `As caçambas com mais viagens (<b>${nomesTop}</b>) rodaram em trajetos <b>${pctDist}% mais curtos</b> em média (${fmt(topDist,1)} km contra ${fmt(botDist,1)} km) que as com menos viagens (<b>${nomesBottom}</b>) — o ciclo mais curto parece ser o principal motivo da diferença, não um ritmo de trabalho distinto.`;
+    } else if(pctDur!==null && pctDur>=15){
+      texto = `As caçambas com mais viagens (<b>${nomesTop}</b>) tiveram ciclo médio <b>${pctDur}% mais rápido</b> (${fmt(topDur,0)} min contra ${fmt(botDur,0)} min entre carregar e descarregar) que as com menos viagens (<b>${nomesBottom}</b>) — indício de rota mais eficiente ou menos espera, não necessariamente distância menor.`;
+    } else if(pctDiasInv!==null && pctDiasInv>=15){
+      texto = `A diferença está mais em disponibilidade do que em ritmo: <b>${nomesTop}</b> operaram em ${fmt(topDias,0)} dias no período, contra ${fmt(botDias,0)} dias de <b>${nomesBottom}</b> — sugerindo que o fator principal é tempo de equipamento ativo, não desempenho por viagem.`;
+    } else {
+      texto = `Nesta amostra, a diferença de viagens entre <b>${nomesTop}</b> e <b>${nomesBottom}</b> não é explicada claramente por distância, duração de ciclo ou dias ativos — vale investigar fatores operacionais (tipo de material, disponibilidade do equipamento, alocação na obra).`;
+    }
+    el.innerHTML = `<div class="insight"><div class="ico info">i</div><div class="txt">${texto}</div></div>`;
+  }
+  document.querySelectorAll('#tblPerformance-tel thead th[data-col]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const col = th.dataset.col;
+      if(perfSort.col===col) perfSort.dir *= -1; else { perfSort.col = col; perfSort.dir = (col==='frota'?1:-1); }
+      renderPerformance();
+    });
+  });
 
   // =====================================================================
   // RANKING (horizontal bars, estilo igual às demais abas)
@@ -2006,6 +2132,7 @@ function rebuildDataset(parsed){
 
   function render(){
     renderKPI(); renderRanking(); renderDiario(); renderAlertas(); renderMatriz(); renderTrajetos();
+    renderInsights(); renderPerformance();
     if(map) renderMap();
   }
 
