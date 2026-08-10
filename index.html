@@ -88,6 +88,12 @@ body{ background: var(--bg-page); color: var(--grafite); font-family: var(--sans
 .kpi .label{ font-family:var(--sans); font-weight:700; font-size:10.5px; text-transform:uppercase; color:var(--cinza); letter-spacing:.4px;}
 .kpi .value{ font-family:var(--sans); font-weight:800; font-size:26px; margin-top:4px; color:var(--azul);}
 .kpi .value small{ font-size:13px; font-weight:500; color:var(--cinza);}
+.kpis-2col{ grid-template-columns:repeat(2,1fr); }
+.kpi .sub{ font-size:11.5px; color:var(--cinza); margin-top:8px; line-height:1.6; }
+.kpi .status{ display:inline-block; margin-top:7px; padding:3px 9px; border-radius:2px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.2px; }
+.kpi .status.acima{ background:#e2f3ea; color:#0ca30c; }
+.kpi .status.entre{ background:#fdf2df; color:#b9790a; }
+.kpi .status.abaixo{ background:#f7e8e5; color:var(--vermelho); }
 
 /* CONTROLS */
 .controls{ display:flex; gap:18px; flex-wrap:wrap; align-items:flex-end; background:#fff; padding:15px 18px; margin-bottom:16px; border:1px solid #d8d6d3; border-radius:2px;}
@@ -460,6 +466,12 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
 
     <div class="kpis" id="kpi-tel"></div>
 
+    <div class="card" id="cardMetas-tel">
+      <h2>Metas de acompanhamento — caçambas</h2>
+      <div class="note">Não há benchmark externo do setor conectado a este painel — a referência mais confiável é o próprio histórico do piloto (obra, jazidas e estradas reais). <b>Base</b> = mediana histórica de cada caçamba no piloto (o normal já comprovado). <b>Meta</b> = patamar das 25% caçambas com melhor desempenho no piloto (já alcançado por parte da frota, logo realista). <b>Atual</b> reflete os filtros selecionados acima.</div>
+      <div class="kpis kpis-2col" id="metasKpi-tel"></div>
+    </div>
+
     <div id="matrizFiltroBadge-tel"></div>
 
     <div class="week-bar" style="flex-wrap:wrap;">
@@ -536,7 +548,7 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
 
     <div class="card">
       <h2>Performance por caçamba — o que explica mais ou menos viagens</h2>
-      <div class="note">Número de viagens isolado não diz muito: uma caçamba com trajetos curtos naturalmente roda mais vezes que uma em rota longa. Compare com distância e duração do ciclo para entender a causa. Clique no cabeçalho de uma coluna para ordenar.</div>
+      <div class="note">Número de viagens isolado não diz muito: uma caçamba com trajetos curtos naturalmente roda mais vezes que uma em rota longa. Compare com distância e duração do ciclo para entender a causa. "Ciclo típico" usa a mediana (não a média) para não ser distorcido por gaps de sinal — veja a coluna ao lado: viagens cujo intervalo carga→descarga passou de 3h quase sempre indicam telemetria faltando entre eventos, não espera real, e ficam de fora do cálculo do ciclo típico. Clique no cabeçalho de uma coluna para ordenar.</div>
       <div id="performanceInsight-tel"></div>
       <div class="tbl-wrap">
         <table id="tblPerformance-tel">
@@ -546,8 +558,10 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
             <th data-col="dias">Dias ativos</th>
             <th data-col="viagensDia">Viagens / dia ativo</th>
             <th data-col="distMedia">Dist. média (km)</th>
-            <th data-col="duracaoMedia">Ciclo médio (min)</th>
+            <th data-col="duracaoMedia">Ciclo típico (min)</th>
+            <th data-col="gaps">Gaps de sinal (&gt;3h)</th>
             <th data-col="pesoMedio">Peso médio (ton)</th>
+            <th>vs. Meta</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -1477,6 +1491,77 @@ function rebuildDataset(parsed){
       t.Trajeto = t.OrigemLabel+' → '+t.DestinoLabel;
     });
     diasDisponiveis = [...new Set(trips.map(t=>t.Data))].sort();
+    computeMetas();
+  }
+
+  // =====================================================================
+  // METAS DE ACOMPANHAMENTO (base = mediana histórica do piloto; meta = top 25% do piloto)
+  // =====================================================================
+  let metasTel = null;
+  function percentil(arr, p){
+    if(!arr.length) return null;
+    const s = [...arr].sort((a,b)=>a-b);
+    const idx = (s.length-1)*p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    if(lo===hi) return s[lo];
+    return s[lo] + (s[hi]-s[lo])*(idx-lo);
+  }
+  function computeMetas(){
+    const byFrota = {};
+    trips.filter(t=>t.TipoVeiculo==='Caminhão Basculante').forEach(t=>{
+      const k=t.Frota;
+      if(!byFrota[k]) byFrota[k] = {dias:new Set(), viagens:0, momento:0};
+      byFrota[k].dias.add(t.Data);
+      byFrota[k].viagens += 1;
+      byFrota[k].momento += (t.MomentoTonKm||0);
+    });
+    const arr = Object.values(byFrota).filter(d=>d.dias.size>=3);
+    if(arr.length<3){ metasTel = null; return; }
+    const viagensDiaArr = arr.map(d=>d.viagens/d.dias.size);
+    const momentoDiaArr = arr.map(d=>d.momento/d.dias.size);
+    metasTel = {
+      viagensDia: { base: mediana(viagensDiaArr), meta: percentil(viagensDiaArr,0.75) },
+      momentoDia: { base: mediana(momentoDiaArr), meta: percentil(momentoDiaArr,0.75) },
+      nCacambasRef: arr.length
+    };
+  }
+  function statusVsMeta(atual, base, meta){
+    if(atual>=meta) return {cls:'acima', label:'Acima da meta'};
+    if(atual>=base) return {cls:'entre', label:'Entre a base e a meta'};
+    return {cls:'abaixo', label:'Abaixo do normal'};
+  }
+  function renderMetas(){
+    const el = document.getElementById('metasKpi-tel');
+    if(!el) return;
+    if(!metasTel){
+      el.innerHTML = `<div class="note" style="grid-column:1/-1;">Histórico do piloto ainda pequeno para calcular meta (mínimo de 3 caçambas com pelo menos 3 dias ativos).</div>`;
+      return;
+    }
+    const rows = fTrips().filter(t=>t.TipoVeiculo==='Caminhão Basculante');
+    const cacambasFiltro = new Set(rows.map(r=>r.Frota));
+    const diasFiltro = new Set(rows.map(r=>r.Data)).size || 1;
+    const atualViagensDia = cacambasFiltro.size ? (rows.length/cacambasFiltro.size)/diasFiltro : 0;
+    const totalMomento = rows.reduce((s,r)=>s+(r.MomentoTonKm||0),0);
+    const atualMomentoDia = cacambasFiltro.size ? (totalMomento/cacambasFiltro.size)/diasFiltro : 0;
+
+    const mv = metasTel.viagensDia, mm = metasTel.momentoDia;
+    const sv = statusVsMeta(atualViagensDia, mv.base, mv.meta);
+    const sm = statusVsMeta(atualMomentoDia, mm.base, mm.meta);
+
+    el.innerHTML = `
+      <div class="kpi">
+        <div class="label">Viagens / dia por caçamba</div>
+        <div class="value">${fmt(atualViagensDia,1)} <small>atual no filtro</small></div>
+        <div class="sub">Base histórica: <b>${fmt(mv.base,1)}</b> · Meta (top 25% do piloto): <b>${fmt(mv.meta,1)}</b></div>
+        <span class="status ${sv.cls}">${sv.label}</span>
+      </div>
+      <div class="kpi">
+        <div class="label">Momento de transporte / dia por caçamba</div>
+        <div class="value">${fmt(atualMomentoDia,1)} <small>ton·km, atual no filtro</small></div>
+        <div class="sub">Base histórica: <b>${fmt(mm.base,1)}</b> · Meta (top 25% do piloto): <b>${fmt(mm.meta,1)}</b></div>
+        <span class="status ${sm.cls}">${sm.label}</span>
+      </div>
+    `;
   }
   loadData(JSON.parse(document.getElementById('data-json-tel').textContent));
 
@@ -1693,14 +1778,21 @@ function rebuildDataset(parsed){
     const comOrigem = rows.filter(r=>r.OrigemIdentificada).length;
     const pctOrigem = Math.round(1000*comOrigem/rows.length)/10;
     const alertasFiltrados = fAlerts().length;
+    const gapsRows = rows.filter(r=>r.OrigemIdentificada && r.DuracaoMin!==null && r.DuracaoMin!==undefined && r.DuracaoMin>GAP_SINAL_MIN);
+    const gapsPorFrota = {};
+    gapsRows.forEach(r=>{ gapsPorFrota[r.Frota]=(gapsPorFrota[r.Frota]||0)+1; });
+    const gapsTop = Object.entries(gapsPorFrota).sort((a,b)=>b[1]-a[1])[0];
 
     const items = [
       {ico:'info', txt:`No período <b>${periodoTxt}</b>, <b>${cacambasAtivas} caçamba${cacambasAtivas===1?'':'s'}</b> geraram <b>${fmt(rows.length)} viagens</b> identificadas 100% automaticamente — contra apenas <b>${meta.pct_manual_identificado}%</b> de identificação no apontamento manual atual.`},
       {ico:'up', txt:`<b>${topFrota[0]}</b> foi a caçamba mais produtiva do filtro atual, com <b>${topFrota[1]} viagens</b> registradas pela telemetria sem qualquer digitação manual.`},
       {ico:'info', txt:`O trajeto <b>${topTrajeto[0]}</b> concentrou o maior momento de transporte no período selecionado (<b>${fmt(topTrajeto[1])} ton·km</b>), calculado com coordenadas reais de GPS — não estimativa por estaca.`},
       {ico:(pctOrigem>=85?'up':'warn'), txt:`<b>${pctOrigem.toString().replace('.',',')}%</b> das viagens neste filtro tiveram origem e destino totalmente identificados pela telemetria; o restante corresponde a viagens iniciadas fora da janela de coleta.`},
-      {ico:'warn', txt:`A telemetria também capturou <b>${alertasFiltrados} alerta${alertasFiltrados===1?'':'s'} operacional${alertasFiltrados===1?'':'is'}</b> (bateria desconectada / desabastecimento fora do padrão) neste filtro — hoje inexistentes em qualquer controle manual da frota.`},
+      {ico:'warn', txt:`A telemetria também capturou <b>${alertasFiltrados} ${alertasFiltrados===1?'alerta operacional':'alertas operacionais'}</b> (bateria desconectada / desabastecimento fora do padrão) neste filtro — hoje inexistentes em qualquer controle manual da frota.`},
     ];
+    if(gapsRows.length>0){
+      items.push({ico:'warn', txt:`<b>${gapsRows.length} ${gapsRows.length===1?'viagem':'viagens'}</b> neste filtro ${gapsRows.length===1?'teve':'tiveram'} intervalo entre carga e descarga acima de 3h — quase sempre é gap de sinal (evento "Sensor Carregado" perdido), não espera real. ${gapsTop?`Mais concentrado em <b>${gapsTop[0]}</b> (${gapsTop[1]}).`:''} Esses casos são excluídos do "Ciclo típico" na tabela de Performance, mas continuam contando como viagem.`});
+    }
     document.getElementById('insightsTel').innerHTML = items.map(i=>`
       <div class="insight"><div class="ico ${i.ico}">${i.ico==='up'?'▲':i.ico==='down'?'▼':i.ico==='warn'?'!':'i'}</div><div class="txt">${i.txt}</div></div>
     `).join('');
@@ -1710,26 +1802,38 @@ function rebuildDataset(parsed){
   // PERFORMANCE POR CAÇAMBA (o que explica mais/menos viagens)
   // =====================================================================
   const perfSort = { col:'viagens', dir:-1 };
+  const GAP_SINAL_MIN = 180; // acima disso, quase certo que é telemetria faltando entre carga e descarga, não espera real
+  function mediana(arr){
+    if(!arr.length) return null;
+    const s = [...arr].sort((a,b)=>a-b);
+    const mid = Math.floor(s.length/2);
+    return s.length%2 ? s[mid] : (s[mid-1]+s[mid])/2;
+  }
   function renderPerformance(){
     const rows = fTrips();
     const byFrota = {};
     rows.forEach(r=>{
       const k = r.Frota;
-      if(!byFrota[k]) byFrota[k] = {viagens:0, dias:new Set(), distSum:0, distN:0, durSum:0, durN:0, pesoSum:0, pesoN:0};
+      if(!byFrota[k]) byFrota[k] = {viagens:0, dias:new Set(), distSum:0, distN:0, durArr:[], gaps:0, pesoSum:0, pesoN:0, tipo:r.TipoVeiculo};
       const d = byFrota[k];
       d.viagens += 1;
       d.dias.add(r.Data);
       if(r.DistanciaKm!==null && r.DistanciaKm!==undefined){ d.distSum += r.DistanciaKm; d.distN += 1; }
-      if(r.DuracaoMin!==null && r.DuracaoMin!==undefined && r.OrigemIdentificada){ d.durSum += r.DuracaoMin; d.durN += 1; }
+      if(r.DuracaoMin!==null && r.DuracaoMin!==undefined && r.OrigemIdentificada){
+        d.durArr.push(r.DuracaoMin);
+        if(r.DuracaoMin>GAP_SINAL_MIN) d.gaps += 1;
+      }
       if(r.PesoTon!==null && r.PesoTon!==undefined){ d.pesoSum += r.PesoTon; d.pesoN += 1; }
     });
     let list = Object.entries(byFrota).map(([f,d])=>({
       frota: f,
+      tipo: d.tipo,
       viagens: d.viagens,
       dias: d.dias.size,
       viagensDia: d.dias.size ? d.viagens/d.dias.size : 0,
       distMedia: d.distN ? d.distSum/d.distN : null,
-      duracaoMedia: d.durN ? d.durSum/d.durN : null,
+      duracaoMedia: d.durArr.length ? mediana(d.durArr) : null,
+      gaps: d.gaps,
       pesoMedio: d.pesoN ? d.pesoSum/d.pesoN : null
     }));
     const tbody = document.querySelector('#tblPerformance-tel tbody');
@@ -1738,7 +1842,7 @@ function rebuildDataset(parsed){
       th.innerHTML = base + (th.dataset.col===perfSort.col ? `<span class="sort-ico">${perfSort.dir===1?'▲':'▼'}</span>` : '');
     });
     if(list.length===0){
-      tbody.innerHTML = `<tr><td colspan="7" style="color:#999;font-style:italic;">Sem viagens no filtro selecionado</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" style="color:#999;font-style:italic;">Sem viagens no filtro selecionado</td></tr>`;
       renderPerformanceInsight([]);
       return;
     }
@@ -1749,13 +1853,21 @@ function rebuildDataset(parsed){
       if(typeof na==='string') return na.localeCompare(nb)*perfSort.dir;
       return (na-nb)*perfSort.dir;
     });
-    tbody.innerHTML = list.map(r=>`
+    tbody.innerHTML = list.map(r=>{
+      let metaCell = '<td>—</td>';
+      if(metasTel && r.tipo==='Caminhão Basculante'){
+        const s = statusVsMeta(r.viagensDia, metasTel.viagensDia.base, metasTel.viagensDia.meta);
+        metaCell = `<td><span class="status ${s.cls}" style="margin-top:0;">${s.label}</span></td>`;
+      }
+      return `
       <tr><td><b>${r.frota}</b></td><td>${fmt(r.viagens)}</td><td>${fmt(r.dias)}</td>
       <td>${fmt(r.viagensDia,2)}</td>
       <td>${r.distMedia!==null?fmt(r.distMedia,2):'—'}</td>
       <td>${r.duracaoMedia!==null?fmt(r.duracaoMedia,0):'—'}</td>
-      <td>${r.pesoMedio!==null?fmt(r.pesoMedio,2):'—'}</td></tr>
-    `).join('');
+      <td${r.gaps>0?' style="color:var(--vermelho);font-weight:700;"':''}>${r.gaps>0?fmt(r.gaps):'—'}</td>
+      <td>${r.pesoMedio!==null?fmt(r.pesoMedio,2):'—'}</td>
+      ${metaCell}</tr>
+    `;}).join('');
     renderPerformanceInsight(list);
   }
   function renderPerformanceInsight(list){
@@ -2132,7 +2244,7 @@ function rebuildDataset(parsed){
 
   function render(){
     renderKPI(); renderRanking(); renderDiario(); renderAlertas(); renderMatriz(); renderTrajetos();
-    renderInsights(); renderPerformance();
+    renderInsights(); renderPerformance(); renderMetas();
     if(map) renderMap();
   }
 
