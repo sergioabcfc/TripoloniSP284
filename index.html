@@ -308,6 +308,15 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
   .kpis{ grid-template-columns:1fr; }
   .kpi .value{ font-size:19px; }
 }
+
+/* ---- PROTEÇÃO POR SENHA (overlay) ---- */
+.senha-overlay{ position:fixed; inset:0; background:rgba(43,42,41,.55); z-index:3000; display:flex; align-items:center; justify-content:center; padding:16px; }
+.senha-box{ background:#fff; padding:24px 26px; border-radius:2px; width:340px; max-width:100%; box-shadow:0 8px 30px rgba(0,0,0,.28); }
+.senha-box h3{ margin:0 0 8px; font-family:var(--sans); font-weight:700; font-size:14px; text-transform:uppercase; color:var(--azul); letter-spacing:.3px; }
+.senha-box p{ font-size:12.5px; color:var(--cinza); margin:0 0 14px; line-height:1.55; }
+.senha-box input{ display:block; width:100%; padding:9px 11px; border:1px solid #c7c5c1; border-radius:2px; font-family:var(--sans); font-size:13px; margin-bottom:10px; }
+.senha-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
+.senha-erro{ color:var(--vermelho); font-size:11.5px; margin:-4px 0 10px; font-weight:600; }
 </style>
 </head>
 <body>
@@ -568,6 +577,7 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
       <div style="flex:1 1 320px;">
         <h2 style="margin-bottom:6px;">Atualizar dados da telemetria</h2>
         <div class="note" style="margin-bottom:0;">Envie o relatório bruto exportado direto do site da MOVIAS (aba "Relatório de Eventos", sem nenhum tratamento manual) para recalcular esta aba com uma amostragem maior. Não mexe nas abas Escavadeiras/Caçambas. Depois de importar, use "Baixar dados atuais" para salvar um arquivo local — reabra com "Carregar dados salvos" a qualquer momento (mesmo em outra sessão) sem precisar reimportar a planilha da MOVIAS, e sem depender de internet.</div>
+        <div class="note" style="margin-bottom:0; margin-top:6px;">🔒 Os três botões ao lado pedem senha antes de agir (evita sobrescrever ou exportar os dados sem querer). É uma trava simples do lado do navegador — não impede alguém tecnicamente capaz de contornar pelo código-fonte, só evita clique acidental.</div>
       </div>
       <div style="text-align:right;">
         <input type="file" id="fileInputTel" accept=".xlsx,.xls" style="display:none;">
@@ -584,6 +594,7 @@ table.heat-table td.cell.active-filter{ outline:2.5px solid var(--azul); outline
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
           Baixar dados atuais
         </button>
+        <div><button class="btn-pdf outline" id="btnTrocarSenhaTel" style="margin-top:8px;">Trocar senha (só nesta sessão)</button></div>
         <div class="update-status" id="updateStatusTel"></div>
       </div>
     </div>
@@ -3454,11 +3465,93 @@ function rebuildDataset(parsed){
     return {meta, trips, alertEvents};
   }
 
+  // =====================================================================
+  // PROTEÇÃO POR SENHA — só pra evitar clique acidental/uso casual nos botões que
+  // sobrescrevem ou exportam dados. Isso é uma trava do lado do navegador: o hash
+  // (não a senha em texto puro) fica no código-fonte deste arquivo, então quem tiver
+  // conhecimento técnico consegue ver o hash ou pular a checagem pelo DevTools — não
+  // é segurança de verdade, é só um freio contra "cliquei sem querer".
+  // =====================================================================
+  const SENHA_HASH_TEL = '0df5933a506e1722de834a03364503a2b228d74f5218dce053ca134427e4da9c';
+  let senhaHashAtivaTel = SENHA_HASH_TEL; // pode mudar em memória via "Trocar senha" — só dura esta sessão
+  let acaoDesbloqueadaTel = false;
+  async function sha256HexTel(txt){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  function exigirSenhaTel(label){
+    if(acaoDesbloqueadaTel) return Promise.resolve(true);
+    return new Promise(resolve=>{
+      const overlay = document.getElementById('senhaOverlay-tel');
+      const msg = document.getElementById('senhaMsg-tel');
+      const input = document.getElementById('senhaInput-tel');
+      const erro = document.getElementById('senhaErro-tel');
+      const btnOk = document.getElementById('senhaConfirmar-tel');
+      const btnCancel = document.getElementById('senhaCancelar-tel');
+      msg.textContent = `Ação protegida: "${label}". Digite a senha para continuar.`;
+      input.value = ''; erro.style.display = 'none';
+      overlay.style.display = 'flex';
+      input.focus();
+      async function tentar(){
+        if(!input.value){ return; }
+        const hash = await sha256HexTel(input.value);
+        if(hash===senhaHashAtivaTel){ acaoDesbloqueadaTel = true; limpar(); resolve(true); }
+        else { erro.style.display = 'block'; input.value = ''; input.focus(); }
+      }
+      function cancelar(){ limpar(); resolve(false); }
+      function onKey(e){ if(e.key==='Enter') tentar(); else if(e.key==='Escape') cancelar(); }
+      function limpar(){
+        overlay.style.display = 'none';
+        btnOk.removeEventListener('click', tentar);
+        btnCancel.removeEventListener('click', cancelar);
+        input.removeEventListener('keydown', onKey);
+      }
+      btnOk.addEventListener('click', tentar);
+      btnCancel.addEventListener('click', cancelar);
+      input.addEventListener('keydown', onKey);
+    });
+  }
+  const btnTrocarSenhaTel = document.getElementById('btnTrocarSenhaTel');
+  if(btnTrocarSenhaTel){
+    btnTrocarSenhaTel.addEventListener('click', async ()=>{
+      if(!(await exigirSenhaTel('Trocar senha'))) return;
+      const overlay = document.getElementById('trocarSenhaOverlay-tel');
+      const inp1 = document.getElementById('trocarSenhaNova1-tel');
+      const inp2 = document.getElementById('trocarSenhaNova2-tel');
+      const erro = document.getElementById('trocarSenhaErro-tel');
+      const btnOk = document.getElementById('trocarSenhaConfirmar-tel');
+      const btnCancel = document.getElementById('trocarSenhaCancelar-tel');
+      inp1.value=''; inp2.value=''; erro.style.display='none';
+      overlay.style.display = 'flex';
+      inp1.focus();
+      async function salvar(){
+        if(!inp1.value || inp1.value.length<4){ erro.textContent='A nova senha precisa ter pelo menos 4 caracteres.'; erro.style.display='block'; return; }
+        if(inp1.value!==inp2.value){ erro.textContent='As duas senhas digitadas não são iguais.'; erro.style.display='block'; return; }
+        senhaHashAtivaTel = await sha256HexTel(inp1.value);
+        acaoDesbloqueadaTel = false; // relocka já — a próxima ação protegida pede a nova senha
+        limpar();
+        statusTel.textContent = 'Senha alterada para esta sessão: a próxima ação protegida vai pedir a nova senha (volta a ser a original ao reabrir o arquivo).';
+        statusTel.className = 'update-status ok';
+      }
+      function cancelar(){ limpar(); }
+      function limpar(){
+        overlay.style.display = 'none';
+        btnOk.removeEventListener('click', salvar);
+        btnCancel.removeEventListener('click', cancelar);
+      }
+      btnOk.addEventListener('click', salvar);
+      btnCancel.addEventListener('click', cancelar);
+    });
+  }
+
   const btnUpdateTel = document.getElementById('btnUpdateTel');
   const fileInputTel = document.getElementById('fileInputTel');
   const statusTel = document.getElementById('updateStatusTel');
   if(btnUpdateTel){
-    btnUpdateTel.addEventListener('click', ()=>fileInputTel.click());
+    btnUpdateTel.addEventListener('click', async ()=>{
+      if(!(await exigirSenhaTel('Atualizar dados (Telemetria)'))) return;
+      fileInputTel.click();
+    });
     fileInputTel.addEventListener('change', ()=>{
       const file = fileInputTel.files[0];
       if(!file) return;
@@ -3495,7 +3588,8 @@ function rebuildDataset(parsed){
   const btnCarregarJsonTel = document.getElementById('btnCarregarJsonTel');
   const fileInputTelJson = document.getElementById('fileInputTelJson');
   if(btnSalvarJsonTel){
-    btnSalvarJsonTel.addEventListener('click', ()=>{
+    btnSalvarJsonTel.addEventListener('click', async ()=>{
+      if(!(await exigirSenhaTel('Baixar dados atuais'))) return;
       if(!trips || !trips.length){ statusTel.textContent='Nada para salvar ainda.'; statusTel.className='update-status err'; return; }
       const payload = { meta, trips, alertEvents, exportadoEm: new Date().toISOString() };
       const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
@@ -3513,7 +3607,10 @@ function rebuildDataset(parsed){
     });
   }
   if(btnCarregarJsonTel){
-    btnCarregarJsonTel.addEventListener('click', ()=>fileInputTelJson.click());
+    btnCarregarJsonTel.addEventListener('click', async ()=>{
+      if(!(await exigirSenhaTel('Carregar dados salvos'))) return;
+      fileInputTelJson.click();
+    });
     fileInputTelJson.addEventListener('change', ()=>{
       const file = fileInputTelJson.files[0];
       if(!file) return;
@@ -3539,6 +3636,33 @@ function rebuildDataset(parsed){
   }
 })();
 </script>
+
+<div class="senha-overlay" id="senhaOverlay-tel" style="display:none;">
+  <div class="senha-box">
+    <h3>Ação protegida</h3>
+    <p id="senhaMsg-tel"></p>
+    <input type="password" id="senhaInput-tel" placeholder="Senha" autocomplete="off">
+    <div class="senha-erro" id="senhaErro-tel" style="display:none;">Senha incorreta.</div>
+    <div class="senha-actions">
+      <button class="btn-pdf outline" id="senhaCancelar-tel">Cancelar</button>
+      <button class="btn-update" id="senhaConfirmar-tel">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="senha-overlay" id="trocarSenhaOverlay-tel" style="display:none;">
+  <div class="senha-box">
+    <h3>Trocar senha</h3>
+    <p>Vale só para esta aba/sessão do navegador — ao reabrir o arquivo, volta a valer a senha original. Para tornar a troca permanente, peça pra quem gerou este painel atualizar o arquivo com a nova senha.</p>
+    <input type="password" id="trocarSenhaNova1-tel" placeholder="Nova senha" autocomplete="off">
+    <input type="password" id="trocarSenhaNova2-tel" placeholder="Confirmar nova senha" autocomplete="off" style="margin-top:-2px;">
+    <div class="senha-erro" id="trocarSenhaErro-tel" style="display:none;"></div>
+    <div class="senha-actions">
+      <button class="btn-pdf outline" id="trocarSenhaCancelar-tel">Cancelar</button>
+      <button class="btn-update" id="trocarSenhaConfirmar-tel">Salvar nova senha</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
